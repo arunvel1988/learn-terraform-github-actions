@@ -200,7 +200,7 @@ resource "tls_private_key" "pk" {
 }
 
 resource "aws_key_pair" "kp" {
-  key_name   = "myKey"       # Create "myKey" to AWS!!
+  key_name   = "myKey" # Create "myKey" to AWS!!
   public_key = tls_private_key.pk.public_key_openssh
 
   provisioner "local-exec" { # Create "myKey.pem" to your computer!!
@@ -210,16 +210,16 @@ resource "aws_key_pair" "kp" {
 
 
 resource "aws_instance" "example" {
-  ami = "${lookup(var.AMIS, var.AWS_REGION)}"
+  ami           = lookup(var.AMIS, var.AWS_REGION)
   instance_type = "t2.micro"
-  subnet_id = aws_subnet.main-public-1.id
+  subnet_id     = aws_subnet.main-public-1.id
 
   # the security group
   vpc_security_group_ids = [aws_security_group.allow-ssh.id]
-  key_name = "${aws_key_pair.kp.key_name}"
+  key_name               = aws_key_pair.kp.key_name
 
   provisioner "file" {
-    source = "script.sh"
+    source      = "script.sh"
     destination = "/tmp/script.sh"
   }
   provisioner "remote-exec" {
@@ -229,10 +229,10 @@ resource "aws_instance" "example" {
     ]
   }
   connection {
-    host = "${self.public_ip}"
-    user = "${var.INSTANCE_USERNAME}"
+    host        = self.public_ip
+    user        = var.INSTANCE_USERNAME
     private_key = tls_private_key.pk.private_key_pem
-  #  host = aws_instance.example.public_ip
+    #  host = aws_instance.example.public_ip
   }
 }
 
