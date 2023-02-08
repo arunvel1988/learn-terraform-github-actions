@@ -10,5 +10,6 @@ resource "aws_instance" "test" {
   tags = {
     Name = "test-instance"
     env = "dev2"
+    test = "s3"
   }
 }
