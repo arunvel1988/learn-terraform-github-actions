@@ -1,7 +1,10 @@
 env:
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
+  AWS_ACCESS_KEY_ID_DEV: ${{ secrets.AWS_ACCESS_KEY_ID_DEV }}
+  AWS_SECRET_ACCESS_KEY_DEV: ${{ secrets.AWS_SECRET_ACCESS_KEY_DEV }}
+  AWS_ACCESS_KEY_ID_STAGE: ${{ secrets.AWS_ACCESS_KEY_ID_STAGE }}
+  AWS_SECRET_ACCESS_KEY_STAGE: ${{ secrets.AWS_SECRET_ACCESS_KEY_STAGE }}
+  AWS_ACCESS_KEY_ID_PROD: ${{ secrets.AWS_ACCESS_KEY_ID_PROD }}
+  AWS_SECRET_ACCESS_KEY_PROD: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}
 
 name: "Terraform"
 
@@ -9,7 +12,11 @@ on:
   push:
     branches:
       - main
+      - dev
+      - stage
   pull_request:
+    branches:
+      - main
 
 jobs:
   terraform:
@@ -72,9 +79,39 @@ jobs:
         if: steps.plan.outcome == 'failure'
         run: exit 1
 
-      - name: Terraform Apply
+      - name: Terraform Apply - Dev
+        if: github.ref == 'refs/heads/dev' && github.event_name == 'push'
+        run: |
+          export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID_DEV }}
+          export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY_DEV }}
+          terraform apply -auto-approve -input=false
+
+      - name: Terraform Apply - Stage
+        if: github.ref == 'refs/heads/stage' && github.event_name == 'push'
+        run: |
+          export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID_STAGE }}
+          export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY_STAGE }}
+          terraform apply -auto-approve -input=false
+
+      - name: Approve Pull Request
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.pulls.createReview({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              event: 'APPROVE'
+            })
+
+      - name: Terraform Apply - Prod
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: terraform apply -auto-approve -input=false
+        run: |
+          export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID_PROD }}
+          export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}
+          terraform apply -auto-approve -input=false
         
       - name: Setup Go
         uses: actions/setup-go@v2
@@ -98,4 +135,3 @@ jobs:
       - name: Go Test
         run: |
           go test -v
-
